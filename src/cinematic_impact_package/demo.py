@@ -1,5 +1,5 @@
 import argparse
-from lib import hello
+from cinematic_impact_package.lib import hello
 
 def main():
     parser = argparse.ArgumentParser()

@@ -8,6 +8,9 @@ version = "1.0.0"
 description = "A model to measure cinematic impact on the data collected from IMDb"
 readme = "README.md"
 requires-python = ">=3.11"
+dependencies = [
+"numpy == 2.0.0",
+"pandas == 2.2.2"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cinematic_impact_package"]
