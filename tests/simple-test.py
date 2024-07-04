@@ -1,3 +1,3 @@
-from cinematic_impact_package import lib
+from cinematic_impact_package.lib import hello
 
-lib.hello('test', 2)
+hello('test', 2)
