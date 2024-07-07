@@ -9,8 +9,10 @@ description = "A model to measure cinematic impact on the data collected from IM
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-"numpy == 2.0.0",
-"pandas == 2.2.2"]
+    "numpy == 2.0.0",
+    "pandas == 2.2.2",
+    "pycountry==24.6.1"
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cinematic_impact_package"]
