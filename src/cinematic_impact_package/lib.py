@@ -37,6 +37,45 @@ def load_data(file, delim='\t', usecols=None):
     print(dataframe.head())
     return dataframe
 
+def create_representation(movie_filter: MovieFilter, rating_reduced_table, repr_size, vote_treshold=None):
+    rating_movies = movie_filter.filter(rating_reduced_table)
+    if vote_treshold is not None:
+        rating_movies = rating_movies[rating_movies['numVotes'] > vote_treshold]
+    rating_movies.sort_values('averageRating', ascending=False, inplace=True)
+    representation = rating_movies.head(repr_size)
+    return representation
+
+def get_top_countries(movie_filter: MovieFilter, representation_table, akas_reduced_table,  qm, *args, **kwargs):
+    akas_reduced_table = akas_reduced_table.rename(columns={'titleId': "tconst"})
+    akas_movies = movie_filter.filter(akas_reduced_table)
+    org_titles = akas_movies[akas_movies['isOriginalTitle'] == 1][['tconst', 'title']]
+
+    prepared_akas = akas_movies[akas_movies['isOriginalTitle'] == 0][["tconst", 'title', 'region']]
+    tit2reg = pd.merge(org_titles, prepared_akas, on=["title", "tconst"])[["tconst", 'region']]
+    tit2reg_with_rating = pd.merge(tit2reg, representation_table, on="tconst")
+
+    fun = QUALITY_MEASURES[qm] if isinstance(qm, str) else qm
+    top_countries = tit2reg_with_rating[['region', 'numVotes', 'averageRating']].groupby(['region'], as_index=False).apply(fun, *args, **kwargs)
+    top_countries.columns = [qm if col is None else col for col in top_countries.columns]
+    top_countries['region'] = top_countries['region'].map(_code_to_country)
+    top_countries.rename(columns={'region':'country'}, inplace=True)
+    top_countries.sort_values(qm, ascending=False, inplace=True)
+
+    result = top_countries.head(10)
+
+    return result
+
+def movies_quality(movie_filter: MovieFilter, rating_reduced_table, repr_size, akas_reduced_table,  qm, vote_treshold=None, output_path=None, *args, **kwargs):
+
+    representation = create_representation(movie_filter, rating_reduced_table, repr_size, vote_treshold)
+    result = get_top_countries(movie_filter, representation, akas_reduced_table,  qm, *args, **kwargs)
+    if output_path is not None:
+        result.to_csv(output_path, index=False)
+    else:
+        result.to_csv(f"out/task1_repr_{repr_size}_th{vote_treshold}_{qm}.csv", index=False)
+
+    return result
+
 def weak_impact(movie_filter: MovieFilter, rating_reduced_table, akas_reduced_table):
     akas_reduced_table = akas_reduced_table.rename(columns={'titleId': "tconst"})
     akas_movies = movie_filter.filter(akas_reduced_table)
@@ -103,15 +142,12 @@ def impact_vs_data(impact_df, impact_col, data_df, data_col, output_path = None)
 
     data_rating['dataRating'] = data_rating[data_col].rank(method='dense', ascending=False)
     impact_rating['impactRating'] = impact_rating[impact_col].rank(method='dense', ascending=False)
-
-    print(data_rating)
-    print(impact_rating)
-
+    
+    # ascending = False ???
     result = pd.merge(impact_rating, data_rating, on='country')
     result['difference'] = result['dataRating'] - result['impactRating']
     result = result[['country', 'impactRating', 'dataRating', 'difference']].sort_values('difference')
 
-    print(result)
     if output_path is not None:
         result.to_csv(output_path, index=False)
     else:
