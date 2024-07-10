@@ -27,6 +27,14 @@ class MovieFilter:
         return pd.merge(self.is_movie, df, on='tconst')
 
 
+class YearsFilter:
+    def __init__(self, basics_path: str, lower, upper: str):
+        basic_info = load_data(basics_path)
+        self.is_movie = basic_info[basic_info['startYear'].isin([str(x) for x in range(lower, upper+1)])]['tconst']
+    
+    def filter(self, df: pd.DataFrame):
+        return pd.merge(self.is_movie, df, on='tconst')
+
 def hello(name, size):
     zeros = np.zeros(size)
     print(f"Hello {name}! We can use numpy.zeros({size}): {zeros}")
@@ -142,16 +150,60 @@ def impact_vs_data(impact_df, impact_col, data_df, data_col, output_path = None)
 
     data_rating['dataRating'] = data_rating[data_col].rank(method='dense', ascending=False)
     impact_rating['impactRating'] = impact_rating[impact_col].rank(method='dense', ascending=False)
-    
-    # ascending = False ???
+ 
     result = pd.merge(impact_rating, data_rating, on='country')
     result['difference'] = result['dataRating'] - result['impactRating']
-    result = result[['country', 'impactRating', 'dataRating', 'difference']].sort_values('difference')
+    result = result[['country', 'impactRating', 'dataRating', 'difference']].sort_values('difference', ascending=False)
 
     if output_path is not None:
         result.to_csv(output_path, index=False)
     else:
         result.to_csv(f"out/task2_{impact_col}_to_{data_col}.csv", index=False)
+
+def own_preparation(movie_filter: MovieFilter, basic_info, akas_info):
+    basic_info = movie_filter.filter(basic_info)
+    basic_info = basic_info.assign(genre=basic_info['genres'].str.split(',')).explode('genre').reset_index(drop=True)
+    tit2gen = basic_info[["tconst", 'genre']]
+    tit2gen = tit2gen[tit2gen['genre'] != "\\N"]
+
+    akas_info.rename(columns={'titleId': "tconst"}, inplace=True)
+    akas_info = movie_filter.filter(akas_info)
+    org_titles = akas_info[akas_info['isOriginalTitle'] == 1][['tconst', 'title']]
+    prepared_akas = akas_info[akas_info['isOriginalTitle'] == 0][["tconst", 'title', 'region']]
+    tit2reg = pd.merge(org_titles, prepared_akas, on=["title", "tconst"])[["tconst", 'region']]
+    return tit2gen, tit2reg
+
+def own_analysis(movie_filter: MovieFilter, genre_table, rating_table, region_table, qm, output_path=None, *args, **kwargs):
+    rating_filtered = movie_filter.filter(rating_table)
+    tit2reg_with_rating = pd.merge(region_table, rating_filtered, on="tconst")   
+    merged = pd.merge(tit2reg_with_rating, genre_table, on="tconst")
+
+    fun = QUALITY_MEASURES[qm] if isinstance(qm, str) else qm
+    final_table = merged[['region', 'numVotes', 'averageRating', 'genre']].groupby(['region', 'genre'], as_index=False).apply(fun, *args, **kwargs)
+    final_table.columns = [qm if col is None else col for col in final_table.columns]
+    final_table['region'] = final_table['region'].map(_code_to_country)
+    final_table.rename(columns={'region':'country'}, inplace=True)
+    result = final_table.sort_values(qm, ascending=False)
+
+    if output_path is not None:
+        result.to_csv(output_path, index=False)
+    else:
+        result.to_csv(f"out/task3_{qm}_country_vs_genre.csv", index=False)
+
+    return result
+
+def make_comparison(coun_vs_gen, country_set, genre_set, output_path=None):
+    if country_set is not None:
+        coun_vs_gen = coun_vs_gen[coun_vs_gen['country'].isin(country_set)]
+    if genre_set is not None:
+        coun_vs_gen = coun_vs_gen[coun_vs_gen['genre'].isin(genre_set)]
+
+    if output_path is not None:
+        coun_vs_gen.to_csv(output_path, index=False)
+    else:
+        coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}_{'_'.join(list(genre_set))}.csv", index=False)
+
+    return coun_vs_gen
 
 def _code_to_country(x: str) -> str:
     size = len(x)
