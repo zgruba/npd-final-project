@@ -1,18 +1,25 @@
 # Cinematic impact
 
-Tworzenie wirtualnego środowiska:
+Creating a virtual environment:
 
 ```
 python -m venv venv
 source venv/bin/activate
 ```
 
-Instalowanie paczki w repozytorium za pomocą:
+Installing the package from the repository using:
 ```
-pip install -e .
+pip install .
 ```
 
-Dane:
+Testing style by pylint:
+```
+pip install pylint
+pylint src/cinematic_impact_package
+```
+Current score: ```10```
+
+Data used to the analysis:
 
 https://datasets.imdbws.com/
 
