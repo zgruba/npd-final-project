@@ -18,26 +18,16 @@ warnings.filterwarnings(action='ignore', category=FutureWarning)
 
 FLOP_TH = 3
 MASTERPIECE_TH = 7
+VOTE_TH = 100000
 
 QUALITY_MEASURES = {
-    'sum': lambda x, **kwargs: sum(x[kwargs['col']]),
+    'sum_votes': lambda x, **kwargs: sum(x[kwargs['col']]),
     'mean': lambda x, **kwargs: sum(x[kwargs['col']])/len(x),
     'weighted_mean': lambda x, **kwargs: sum(x[kwargs['data']]*x[kwargs['weight']])/sum(x[kwargs['weight']]),
     'flop_prob': lambda x, **kwargs: sum(x[kwargs['col']]<FLOP_TH)/len(x),
     'masterpiece_prob': lambda x, **kwargs: sum(x[kwargs['col']]>MASTERPIECE_TH)/len(x),
     'two-sided': lambda x, **kwargs: (sum(x[kwargs['col']]>MASTERPIECE_TH) - sum(x[kwargs['col']]<FLOP_TH))/len(x)
 }
-
-def hello(name, size):
-    """
-    Prints a greeting and an array of zeros of the specified size.
-    
-    Args:
-        name (str): The name to include in the greeting.
-        size (int): The size of the numpy zeros array.
-    """
-    zeros = np.zeros(size)
-    print(f"Hello {name}! We can use numpy.zeros({size}): {zeros}")
 
 class IMDbData:
     """
@@ -57,7 +47,7 @@ class IMDbData:
         
         Args:
             data_path (tuple[str, str, str]): Tuple of path to data (basics_path, akas_path, ratings_path).
-            type (str): The type of titles to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame').
+            prod_type (str): The type of titles to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame').
             in_years (tuple[int, int]): Tuple of ints representing start and end year for filtering titles.
         """
         basics_path, akas_path, ratings_path = data_paths
@@ -98,8 +88,7 @@ class IMDbData:
             basics_path (str): The file path to the basic information data.
             ratings_path (str): The file path to the ratings information data.
             prod_type (str): The type of production to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame').
-            year_start (int): The start year of the range to filter.
-            year_end (int): The end year of the range to filter.
+            in_years (tuple[int, int]): (the start year of the range to filter,the end year of the range to filter)
 
         Returns:
             tuple[pd.DataFrame, pd.DataFrame]: A tuple containing two DataFrames:
@@ -157,7 +146,7 @@ def load_data(file, delim='\t', usecols=None) -> pd.DataFrame:
     print("Loaded")
     return dataframe
 
-def create_representation(dc: IMDbData, repr_size: int, vote_treshold=None) -> pd.DataFrame:
+def create_representation(dc: IMDbData, repr_size: int, vote_treshold=VOTE_TH) -> pd.DataFrame:
     """
     Creates a representation table of top-rated movies based on average ratings.
     
@@ -199,7 +188,7 @@ def get_top_countries(dc: IMDbData, representation_table: pd.DataFrame,  qm: str
     result = top_countries_renamed.head(10)
     return result
 
-def movies_quality(dc: IMDbData, repr_size: int, qm: str, vote_treshold=None, output_path=None, **kwargs) -> pd.DataFrame:
+def movies_quality(dc: IMDbData, repr_size: int, qm: str, vote_treshold=VOTE_TH, output_path=None, **kwargs) -> pd.DataFrame:
     """
     Computes and saves the quality of movies by country.
     
@@ -219,7 +208,7 @@ def movies_quality(dc: IMDbData, repr_size: int, qm: str, vote_treshold=None, ou
     if output_path is not None:
         result.to_csv(output_path, index=False)
     else:
-        result.to_csv(f"out/task1_repr_{repr_size}_th{vote_treshold}_{qm}.csv", index=False)
+        result.to_csv(f"out/task1_repr_{repr_size}_th_{vote_treshold}_{qm}.csv", index=False)
     return result
 
 def weak_impact(dc: IMDbData) -> pd.DataFrame:
@@ -236,7 +225,7 @@ def weak_impact(dc: IMDbData) -> pd.DataFrame:
     title2rating = dc.title_info_table()[['tconst','averageRating', 'numVotes']]
     title2reg_with_rating = pd.merge(title2reg, title2rating, on="tconst")
 
-    wi = _apply_measure(title2reg_with_rating, ['region', 'numVotes'], ['region'], 'sum', col='numVotes')
+    wi = _apply_measure(title2reg_with_rating, ['region', 'numVotes'], ['region'], 'sum_votes', col='numVotes')
     wi = _region_country_change(wi)
     return wi
 
