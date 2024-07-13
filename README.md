@@ -58,7 +58,7 @@ Profiling:
 python3 -m cProfile -o out_profile/demo.pts src/cinematic_impact_package/demo.py ...
 ```
 ```
-echo "sort tottime\nstats\nquit" | python -m pstats out_profile/demo.pts > pstats_output.txt
+echo "sort tottime\nstats\nquit" | python -m pstats out_profile/demo.pts > out_profile/pstats_output.txt
 ```
 ```
 snakeviz demo.pts
