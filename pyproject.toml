@@ -16,3 +16,6 @@ dependencies = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/cinematic_impact_package"]
+
+[tool.pytest.ini_options]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::FutureWarning"]

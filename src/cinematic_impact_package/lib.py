@@ -6,7 +6,6 @@ compare geopolitical data.
 
 import warnings
 from math import isnan
-import numpy as np
 import pandas as pd
 from pycountry import countries, historic_countries
 
@@ -51,6 +50,7 @@ class IMDbData:
             in_years (tuple[int, int]): Tuple of ints representing start and end year for filtering titles.
         """
         basics_path, akas_path, ratings_path = data_paths
+        # basic_info, ratings_info, akas_info = self.load_and_check(basics_path, akas_path, ratings_path)
         title2info, in_type = self.setup_title2info(basics_path, ratings_path, prod_type, in_years)
         title2reg = self.setup_title2reg(akas_path, in_type)
 
@@ -75,7 +75,22 @@ class IMDbData:
         """
         return self.title2reg
 
-    def setup_title2info(self, basics_path: str,ratings_path: str, prod_type: str, in_years: tuple[int, int]) \
+    # def load_and_check(self, basics_path: str, akas_path: str, ratings_path: str):
+    #     basic_info = load_data(basics_path)
+    #     cols = set(basic_info.columns)
+    #     if not all([x in cols for x in ['tconst', 'genres', 'titleType', 'startYear']]):
+    #         raise ValueError('Invalid format. One of required columns missing.')
+    
+    #     ratings_info = load_data(ratings_path)
+    #     cols = set(ratings_info.columns)
+    #     if not all([x in cols for x in['tconst', 'numVotes', 'averageRating']]):
+    #         raise ValueError('Invalid format. One of required columns missing.')
+
+    #     akas_info = load_data(akas_path, usecols=['titleId','title','region','isOriginalTitle'])
+    #     print("Load&Check loaded.")
+    #     return basic_info, ratings_info, akas_info
+
+    def setup_title2info(self, basics_path: str, ratings_path: str, prod_type: str, in_years: tuple[int, int]) \
                                                                         -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Set up the title to information mapping for a specific production type and year range.
@@ -95,12 +110,11 @@ class IMDbData:
                 - title2info: A DataFrame with the merged basic and ratings information for the filtered titles.
                 - in_type: A DataFrame with the filtered titles (tconst) for the specified production type and year range.
         """
-        basic_info = load_data(basics_path)
+        basic_info = load_data(basics_path, usecols=['tconst', 'genres', 'titleType', 'startYear'])
         basic_info_type = basic_info[basic_info['titleType'] == prod_type]
         in_type = basic_info_type[basic_info_type['startYear'].isin([str(x) for x in range(in_years[0], in_years[1]+1)])]
         in_type_filter = in_type['tconst']
-
-        ratings_info = load_data(ratings_path)
+        ratings_info = load_data(ratings_path, usecols=['tconst', 'numVotes', 'averageRating'])
         merged_info = pd.merge(basic_info, ratings_info, on='tconst')
         title2info = pd.merge(in_type_filter, merged_info, on='tconst')
         return title2info, in_type_filter
@@ -175,7 +189,8 @@ def get_top_countries(dc: IMDbData, representation_table: pd.DataFrame,  qm: str
         qm (str): The quality measure to use for ranking countries.
         **kwargs: Additional keyword arguments for the quality measure function.
     
-    Returns:
+    Returns:        except ValueError:
+            raise ValueError('Invalid format. One of required columns missing.')
         pd.DataFrame: The top countries based on the quality measure.
     """
     title2reg = dc.title_region_table()
@@ -342,7 +357,6 @@ def region_genre_analysis(dc: IMDbData, qm: str, output_path=None, **kwargs) -> 
     title2info = title2info[title2info['genres'] != "\\N"]
     title2info = title2info.assign(genre=title2info['genres'].str.split(',')).explode('genre').reset_index(drop=True)
     merged = pd.merge(title2reg, title2info, on="tconst")
-
     final_table = _apply_measure(merged, ['region', 'numVotes', 'averageRating', 'genre'], ['region', 'genre'], qm, **kwargs)
     final_table = _region_country_change(final_table)
     result = final_table.sort_values(qm, ascending=False)

@@ -15,6 +15,7 @@ TITLE_EPISODE_PATH = "data/title.episode.tsv"
 TITLE_PRINCIPALS_PATH = "data/title.principals.tsv"
 TITLE_RATINGS_PATH = "data/title.ratings.tsv"
 
+QM = ['sum_votes', 'mean', 'weighted_mean', 'flop_prob', 'masterpiece_prob','two-sided']
 
 DEFAULT_QM_ARGS = {
     'sum_votes': {'col': 'numVotes'},
@@ -25,6 +26,14 @@ DEFAULT_QM_ARGS = {
     'two-sided': {'col': 'averageRating'}
 }
 
+KNOWN_GENRES = ['Romance', 'Documentary', 'News', 'Sport', 'Action', 'Adventure', 'Biography',\
+             'Drama', 'Fantasy', 'Comedy', 'War', 'Crime', 'Family', 'History', 'Sci-Fi', 'Thriller',\
+                 'Western', 'Mystery', 'Horror', 'Music', 'Animation', 'Musical', 'Film-Noir', 'Adult',\
+                     'Reality-TV', 'Game-Show', 'Talk-Show']
+
+KNOWN_PROD_TYPES = ['short', 'movie', 'tvShort', 'tvMovie', 'tvSeries', 'tvEpisode', 'tvMiniSeries',\
+                 'tvSpecial', 'video', 'videoGame', 'tvPilot']
+
 def parse_arguments():
     """
     Function supporting parsing arguments.
@@ -34,7 +43,7 @@ def parse_arguments():
         "--basics",
         type=str, 
         required=True, 
-        help="Path to the TSV file including cols = ['tconst', 'genres', 'titleType', 'startYear', 'endYear']."
+        help="Path to the TSV file including cols = ['tconst', 'genres', 'titleType', 'startYear']."
     )
     parser.add_argument(
         "--ratings",
@@ -77,35 +86,38 @@ def parse_arguments():
         "--genres",
         type=str,
         nargs='+',
+        choices=KNOWN_GENRES,
         required=True, 
         help="List of genres to compare."
         )
     parser.add_argument(
-        "--prod_type",
+        "--prodtype",
         type=str,
+        choices=KNOWN_PROD_TYPES,
         default='movie',
         help="The type of titles to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame')."
     )
     parser.add_argument(
-        "--year_start",
+        "--start",
         type=int,
         default=1800,
         help="The start year of the range to filter."
     )
     parser.add_argument(
-        "--year_end",
+        "--end",
         type=int, 
         default=2025,
         help="The end year of the range to filter."
         )
     parser.add_argument(
         "--qm",
-        type=str, 
+        type=str,
+        choices=QM,
         default='weighted_mean',
         help="Quality measure"
         )
     parser.add_argument(
-        "--vote_treshold",
+        "--votetreshold",
         type=int, 
         default=100000,
         help="Minimum number of votes required for a movie to be included."
@@ -113,13 +125,20 @@ def parse_arguments():
     args = parser.parse_args()
     return args
 
+def validate_arguments(args):
+    if args.end < args.start:
+        raise ValueError('End year has smalller value than start year.')
+    if args.votetreshold < 0:
+        raise ValueError('Votetreshold is smaller than 0, it should be nonnegative number.')
+
 def main():
     """
     Main function of demontration program.
     """
     # Initialisation
     args = parse_arguments()
-    md = IMDbData((args.basics, args.akas, args.ratings), args.prod_type, (args.year_start, args.year_end))
+    validate_arguments(args)
+    md = IMDbData((args.basics, args.akas, args.ratings), args.prodtype, (args.start, args.end))
 
     # print(md.title_info_table())
     # print(md.title_region_table())
@@ -156,8 +175,11 @@ def main():
     top = get_top_countries(md, qs, args.qm, **DEFAULT_QM_ARGS[args.qm])
     print(top)
 
-    # Pętla 10, 20, 30, 50, 100, 200
-    movies_quality(md, 100, args.qm, 200000, **DEFAULT_QM_ARGS[args.qm])
+    for repr_num in [10, 20, 30, 50, 100, 200]:
+        result = movies_quality(md, repr_num, args.qm, args.votetreshold, **DEFAULT_QM_ARGS[args.qm])
+        print(f"\nFor {repr_num} best representants we get:")
+        print(result)
+
 
     # Additional region-genre analysis
     result = region_genre_analysis(md, args.qm, **DEFAULT_QM_ARGS[args.qm])
