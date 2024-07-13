@@ -206,9 +206,9 @@ def test_impact_vs_data(mock_impact_table, mock_geopolitical_data, tmp_path):
     pd.testing.assert_frame_equal(loaded_df.reset_index(drop=True), expected_sorted.reset_index(drop=True))
 
 
-def test_region_genre_analysis(imdb_data_instance):
-    result = region_genre_analysis(imdb_data_instance, 'weighted_mean', data='averageRating', weight='numVotes')
-    print(result)
+def test_region_genre_analysis(imdb_data_instance, tmp_path):
+    output_path = tmp_path / "output.csv"
+    result = region_genre_analysis(imdb_data_instance, 'weighted_mean', data='averageRating', weight='numVotes', output_path=output_path)
     expected = pd.DataFrame({'country': [
         'United Kingdom', 'United Kingdom', 'United States', 'United States', 
         'United States', 'United Kingdom', 'United Kingdom', 'United Kingdom'

@@ -50,7 +50,6 @@ class IMDbData:
             in_years (tuple[int, int]): Tuple of ints representing start and end year for filtering titles.
         """
         basics_path, akas_path, ratings_path = data_paths
-        # basic_info, ratings_info, akas_info = self.load_and_check(basics_path, akas_path, ratings_path)
         title2info, in_type = self.setup_title2info(basics_path, ratings_path, prod_type, in_years)
         title2reg = self.setup_title2reg(akas_path, in_type)
 
@@ -356,7 +355,7 @@ def region_genre_analysis(dc: IMDbData, qm: str, output_path=None, **kwargs) -> 
 
     return result
 
-def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set, genre_set: set, output_path=None) -> pd.DataFrame:
+def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set[str] |None, genre_set: set[str] |None, output_path=None) -> pd.DataFrame:
     """
     Makes a comparison of countries and genres and saves the result.
     
@@ -377,7 +376,14 @@ def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set, genre_set: set,
     if output_path is not None:
         coun_vs_gen.to_csv(output_path, index=False)
     else:
-        coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}_{'_'.join(list(genre_set))}.csv", index=False)
+        if country_set is not None and genre_set is not None:
+            coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}_{'_'.join(list(genre_set))}.csv", index=False)
+        elif country_set is not None:
+            coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}.csv", index=False)
+        elif genre_set is not None:
+            coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(genre_set))}.csv", index=False)
+        else:
+            coun_vs_gen.to_csv(f"out/comparison_full.csv", index=False)
 
     return coun_vs_gen
 

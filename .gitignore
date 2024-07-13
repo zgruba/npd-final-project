@@ -1,5 +1,5 @@
 data/
 venv/
-out/
+out/*
 __pycache__
 .coverage

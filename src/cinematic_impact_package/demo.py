@@ -74,7 +74,6 @@ def parse_arguments():
         "--countries",
         type=str,
         nargs='+',
-        required=True,
         help="List of countries to compare."
     )
     parser.add_argument(
@@ -82,7 +81,6 @@ def parse_arguments():
         type=str,
         nargs='+',
         choices=KNOWN_GENRES,
-        required=True,
         help="List of genres to compare."
         )
     parser.add_argument(
@@ -187,7 +185,8 @@ def main():
     result = region_genre_analysis(md, args.qm, **DEFAULT_QM_ARGS[args.qm])
     print(result)
 
-    comparison = make_comparison(result, set(args.countries), set(args.genres))
+    comparison = make_comparison(result, None if args.countries is None else set(args.countries), \
+                                                None if args.genres is None else set(args.genres))
     print(f"\nComparison for countries: {args.countries} and genres: {args.genres}:\n{comparison}")
 
 if __name__ == "__main__":

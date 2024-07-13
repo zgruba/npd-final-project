@@ -7,9 +7,14 @@ python -m venv venv
 source venv/bin/activate
 ```
 
-Installing the package from the repository using:
+Installing the package for usage from the repository using:
 ```
-pip install -r .
+pip install .
+```
+
+or to include pylint, pytest, pytest-cov, snakeviz
+```
+pip install -r requirements.txt
 ```
 
 Testing style by pylint:
@@ -50,10 +55,10 @@ options:
 Profiling:
 
 ```
-python3 -m cProfile -o out/demo.pts src/cinematic_impact_package/demo.py ...
+python3 -m cProfile -o out_profile/demo.pts src/cinematic_impact_package/demo.py ...
 ```
 ```
-echo "sort tottime\nstats\nquit" | python -m pstats out/demo.pts > pstats_output.txt
+echo "sort tottime\nstats\nquit" | python -m pstats out_profile/demo.pts > pstats_output.txt
 ```
 ```
 snakeviz demo.pts
