@@ -79,10 +79,9 @@ tests/lib_test.py ...................                                           
 ---------- coverage: platform linux, python 3.11.6-final-0 -----------
 Name                                  Stmts   Miss  Cover
 ---------------------------------------------------------
-src/cinematic_impact_package/lib.py     173      6    97%
+src/cinematic_impact_package/lib.py     179     12    93%
 ---------------------------------------------------------
-TOTAL                                   173      6    97%
-
+TOTAL                                   179     12    93%
 
 ```
 Data on which structure and analysis were based:

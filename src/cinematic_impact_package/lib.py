@@ -355,7 +355,8 @@ def region_genre_analysis(dc: IMDbData, qm: str, output_path=None, **kwargs) -> 
 
     return result
 
-def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set[str] |None, genre_set: set[str] |None, output_path=None) -> pd.DataFrame:
+def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set[str] | None, genre_set: set[str] | None,\
+                                                                     output_path=None) -> pd.DataFrame:
     """
     Makes a comparison of countries and genres and saves the result.
     
@@ -383,7 +384,7 @@ def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set[str] |None, genr
         elif genre_set is not None:
             coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(genre_set))}.csv", index=False)
         else:
-            coun_vs_gen.to_csv(f"out/comparison_full.csv", index=False)
+            coun_vs_gen.to_csv("out/comparison_full.csv", index=False)
 
     return coun_vs_gen
 
