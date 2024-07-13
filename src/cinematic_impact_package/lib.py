@@ -6,7 +6,6 @@ compare geopolitical data.
 
 import warnings
 from math import isnan
-import numpy as np
 import pandas as pd
 from pycountry import countries, historic_countries
 
@@ -18,26 +17,16 @@ warnings.filterwarnings(action='ignore', category=FutureWarning)
 
 FLOP_TH = 3
 MASTERPIECE_TH = 7
+VOTE_TH = 100000
 
 QUALITY_MEASURES = {
-    'sum': lambda x, **kwargs: sum(x[kwargs['col']]),
+    'sum_votes': lambda x, **kwargs: sum(x[kwargs['col']]),
     'mean': lambda x, **kwargs: sum(x[kwargs['col']])/len(x),
     'weighted_mean': lambda x, **kwargs: sum(x[kwargs['data']]*x[kwargs['weight']])/sum(x[kwargs['weight']]),
     'flop_prob': lambda x, **kwargs: sum(x[kwargs['col']]<FLOP_TH)/len(x),
     'masterpiece_prob': lambda x, **kwargs: sum(x[kwargs['col']]>MASTERPIECE_TH)/len(x),
     'two-sided': lambda x, **kwargs: (sum(x[kwargs['col']]>MASTERPIECE_TH) - sum(x[kwargs['col']]<FLOP_TH))/len(x)
 }
-
-def hello(name, size):
-    """
-    Prints a greeting and an array of zeros of the specified size.
-    
-    Args:
-        name (str): The name to include in the greeting.
-        size (int): The size of the numpy zeros array.
-    """
-    zeros = np.zeros(size)
-    print(f"Hello {name}! We can use numpy.zeros({size}): {zeros}")
 
 class IMDbData:
     """
@@ -57,7 +46,7 @@ class IMDbData:
         
         Args:
             data_path (tuple[str, str, str]): Tuple of path to data (basics_path, akas_path, ratings_path).
-            type (str): The type of titles to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame').
+            prod_type (str): The type of titles to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame').
             in_years (tuple[int, int]): Tuple of ints representing start and end year for filtering titles.
         """
         basics_path, akas_path, ratings_path = data_paths
@@ -85,7 +74,7 @@ class IMDbData:
         """
         return self.title2reg
 
-    def setup_title2info(self, basics_path: str,ratings_path: str, prod_type: str, in_years: tuple[int, int]) \
+    def setup_title2info(self, basics_path: str, ratings_path: str, prod_type: str, in_years: tuple[int, int]) \
                                                                         -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Set up the title to information mapping for a specific production type and year range.
@@ -98,20 +87,18 @@ class IMDbData:
             basics_path (str): The file path to the basic information data.
             ratings_path (str): The file path to the ratings information data.
             prod_type (str): The type of production to filter (e.g., 'movie', 'tvEpisode', 'short', 'videoGame').
-            year_start (int): The start year of the range to filter.
-            year_end (int): The end year of the range to filter.
+            in_years (tuple[int, int]): (the start year of the range to filter,the end year of the range to filter)
 
         Returns:
             tuple[pd.DataFrame, pd.DataFrame]: A tuple containing two DataFrames:
                 - title2info: A DataFrame with the merged basic and ratings information for the filtered titles.
                 - in_type: A DataFrame with the filtered titles (tconst) for the specified production type and year range.
         """
-        basic_info = load_data(basics_path)
+        basic_info = load_data(basics_path, usecols=['tconst', 'genres', 'titleType', 'startYear'])
         basic_info_type = basic_info[basic_info['titleType'] == prod_type]
         in_type = basic_info_type[basic_info_type['startYear'].isin([str(x) for x in range(in_years[0], in_years[1]+1)])]
         in_type_filter = in_type['tconst']
-
-        ratings_info = load_data(ratings_path)
+        ratings_info = load_data(ratings_path, usecols=['tconst', 'numVotes', 'averageRating'])
         merged_info = pd.merge(basic_info, ratings_info, on='tconst')
         title2info = pd.merge(in_type_filter, merged_info, on='tconst')
         return title2info, in_type_filter
@@ -157,7 +144,7 @@ def load_data(file, delim='\t', usecols=None) -> pd.DataFrame:
     print("Loaded")
     return dataframe
 
-def create_representation(dc: IMDbData, repr_size: int, vote_treshold=None) -> pd.DataFrame:
+def create_representation(dc: IMDbData, repr_size: int, vote_treshold=VOTE_TH) -> pd.DataFrame:
     """
     Creates a representation table of top-rated movies based on average ratings.
     
@@ -186,7 +173,8 @@ def get_top_countries(dc: IMDbData, representation_table: pd.DataFrame,  qm: str
         qm (str): The quality measure to use for ranking countries.
         **kwargs: Additional keyword arguments for the quality measure function.
     
-    Returns:
+    Returns:        except ValueError:
+            raise ValueError('Invalid format. One of required columns missing.')
         pd.DataFrame: The top countries based on the quality measure.
     """
     title2reg = dc.title_region_table()
@@ -199,7 +187,7 @@ def get_top_countries(dc: IMDbData, representation_table: pd.DataFrame,  qm: str
     result = top_countries_renamed.head(10)
     return result
 
-def movies_quality(dc: IMDbData, repr_size: int, qm: str, vote_treshold=None, output_path=None, **kwargs) -> pd.DataFrame:
+def movies_quality(dc: IMDbData, repr_size: int, qm: str, vote_treshold=VOTE_TH, output_path=None, **kwargs) -> pd.DataFrame:
     """
     Computes and saves the quality of movies by country.
     
@@ -219,7 +207,7 @@ def movies_quality(dc: IMDbData, repr_size: int, qm: str, vote_treshold=None, ou
     if output_path is not None:
         result.to_csv(output_path, index=False)
     else:
-        result.to_csv(f"out/task1_repr_{repr_size}_th{vote_treshold}_{qm}.csv", index=False)
+        result.to_csv(f"out/task1_repr_{repr_size}_th_{vote_treshold}_{qm}.csv", index=False)
     return result
 
 def weak_impact(dc: IMDbData) -> pd.DataFrame:
@@ -236,7 +224,7 @@ def weak_impact(dc: IMDbData) -> pd.DataFrame:
     title2rating = dc.title_info_table()[['tconst','averageRating', 'numVotes']]
     title2reg_with_rating = pd.merge(title2reg, title2rating, on="tconst")
 
-    wi = _apply_measure(title2reg_with_rating, ['region', 'numVotes'], ['region'], 'sum', col='numVotes')
+    wi = _apply_measure(title2reg_with_rating, ['region', 'numVotes'], ['region'], 'sum_votes', col='numVotes')
     wi = _region_country_change(wi)
     return wi
 
@@ -279,9 +267,12 @@ def geopolitical_data(population_path: str, gdp_path: str, per_capita_path: str)
     Loads and merges geopolitical data from different sources.
     
     Args:
-        population_path (str): Path to the population CSV file.
-        gdp_path (str): Path to the GDP CSV file.
-        per_capita_path (str): Path to the per capita CSV file.
+        population_path (str): Path to the population CSV file with column "Country Code"\
+             with ISO 3166-1 and columns representing years.
+        gdp_path (str): Path to the GDP CSV file with column "Country Code"\
+             with ISO 3166-1 and columns representing years.
+        per_capita_path (str): Path to the per capita CSV file with column "Country Code"\
+         with ISO 3166-1 and columns representing years.
     
     Returns:
         pd.DataFrame: The merged geopolitical data.
@@ -353,7 +344,6 @@ def region_genre_analysis(dc: IMDbData, qm: str, output_path=None, **kwargs) -> 
     title2info = title2info[title2info['genres'] != "\\N"]
     title2info = title2info.assign(genre=title2info['genres'].str.split(',')).explode('genre').reset_index(drop=True)
     merged = pd.merge(title2reg, title2info, on="tconst")
-
     final_table = _apply_measure(merged, ['region', 'numVotes', 'averageRating', 'genre'], ['region', 'genre'], qm, **kwargs)
     final_table = _region_country_change(final_table)
     result = final_table.sort_values(qm, ascending=False)
@@ -365,7 +355,8 @@ def region_genre_analysis(dc: IMDbData, qm: str, output_path=None, **kwargs) -> 
 
     return result
 
-def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set, genre_set: set, output_path=None) -> pd.DataFrame:
+def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set[str] | None, genre_set: set[str] | None,\
+                                                                     output_path=None) -> pd.DataFrame:
     """
     Makes a comparison of countries and genres and saves the result.
     
@@ -386,7 +377,14 @@ def make_comparison(coun_vs_gen: pd.DataFrame, country_set: set, genre_set: set,
     if output_path is not None:
         coun_vs_gen.to_csv(output_path, index=False)
     else:
-        coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}_{'_'.join(list(genre_set))}.csv", index=False)
+        if country_set is not None and genre_set is not None:
+            coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}_{'_'.join(list(genre_set))}.csv", index=False)
+        elif country_set is not None:
+            coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(country_set))}.csv", index=False)
+        elif genre_set is not None:
+            coun_vs_gen.to_csv(f"out/comparison_{'_'.join(list(genre_set))}.csv", index=False)
+        else:
+            coun_vs_gen.to_csv("out/comparison_full.csv", index=False)
 
     return coun_vs_gen
 
@@ -407,6 +405,9 @@ def _region_country_change(df: pd.DataFrame) -> pd.DataFrame:
 def _code_to_country(x: str) -> str:
     size = len(x)
     kwargs = {f"alpha_{size}": x}
+
+    if x == "":
+        return ""
 
     try:
         v = countries.get(**kwargs)
