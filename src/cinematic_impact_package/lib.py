@@ -75,21 +75,6 @@ class IMDbData:
         """
         return self.title2reg
 
-    # def load_and_check(self, basics_path: str, akas_path: str, ratings_path: str):
-    #     basic_info = load_data(basics_path)
-    #     cols = set(basic_info.columns)
-    #     if not all([x in cols for x in ['tconst', 'genres', 'titleType', 'startYear']]):
-    #         raise ValueError('Invalid format. One of required columns missing.')
-    
-    #     ratings_info = load_data(ratings_path)
-    #     cols = set(ratings_info.columns)
-    #     if not all([x in cols for x in['tconst', 'numVotes', 'averageRating']]):
-    #         raise ValueError('Invalid format. One of required columns missing.')
-
-    #     akas_info = load_data(akas_path, usecols=['titleId','title','region','isOriginalTitle'])
-    #     print("Load&Check loaded.")
-    #     return basic_info, ratings_info, akas_info
-
     def setup_title2info(self, basics_path: str, ratings_path: str, prod_type: str, in_years: tuple[int, int]) \
                                                                         -> tuple[pd.DataFrame, pd.DataFrame]:
         """
@@ -283,9 +268,12 @@ def geopolitical_data(population_path: str, gdp_path: str, per_capita_path: str)
     Loads and merges geopolitical data from different sources.
     
     Args:
-        population_path (str): Path to the population CSV file.
-        gdp_path (str): Path to the GDP CSV file.
-        per_capita_path (str): Path to the per capita CSV file.
+        population_path (str): Path to the population CSV file with column "Country Code"\
+             with ISO 3166-1 and columns representing years.
+        gdp_path (str): Path to the GDP CSV file with column "Country Code"\
+             with ISO 3166-1 and columns representing years.
+        per_capita_path (str): Path to the per capita CSV file with column "Country Code"\
+         with ISO 3166-1 and columns representing years.
     
     Returns:
         pd.DataFrame: The merged geopolitical data.
@@ -410,6 +398,9 @@ def _region_country_change(df: pd.DataFrame) -> pd.DataFrame:
 def _code_to_country(x: str) -> str:
     size = len(x)
     kwargs = {f"alpha_{size}": x}
+
+    if x == "":
+        return ""
 
     try:
         v = countries.get(**kwargs)

@@ -7,14 +7,6 @@ from cinematic_impact_package.lib import IMDbData, region_genre_analysis, make_c
     weak_impact, geopolitical_data, impact_vs_data, split_star_countries, strong_impact, \
     create_representation, get_top_countries, movies_quality
 
-NAME_BASICS_PATH = "data/name.basics.tsv"
-TITLE_AKAS_PATH = "data/title.akas.tsv"
-TITLE_BASICS_PATH = "data/title.basics.tsv"
-TITLE_CREW_PATH = "data/title.crew.tsv"
-TITLE_EPISODE_PATH = "data/title.episode.tsv"
-TITLE_PRINCIPALS_PATH = "data/title.principals.tsv"
-TITLE_RATINGS_PATH = "data/title.ratings.tsv"
-
 QM = ['sum_votes', 'mean', 'weighted_mean', 'flop_prob', 'masterpiece_prob','two-sided']
 
 DEFAULT_QM_ARGS = {
@@ -41,45 +33,48 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--basics",
-        type=str, 
-        required=True, 
+        type=str,
+        required=True,
         help="Path to the TSV file including cols = ['tconst', 'genres', 'titleType', 'startYear']."
     )
     parser.add_argument(
         "--ratings",
-        type=str, 
-        required=True, 
+        type=str,
+        required=True,
         help="Path to the TSV file including cols = ['tconst', 'numVotes', 'averageRating]."
     )
     parser.add_argument(
         "--akas",
-        type=str, 
-        required=True, 
+        type=str,
+        required=True,
         help="Path to the TSV file including cols = ['titleId','title','region','isOriginalTitle']."
         )
     parser.add_argument(
         "--gdp",
-        type=str, 
-        required=True, 
-        help="Path to the CSV file with GDP data."
+        type=str,
+        required=True,
+        help="Path to the CSV file with GDP data with column \"Country Code\" \
+        with ISO 3166-1 and columns representing years."
     )
     parser.add_argument(
         "--pop",
-        type=str, 
-        required=True, 
-        help="Path to the CSV file with population data."
+        type=str,
+        required=True,
+        help="Path to the CSV file with population data with column \"Country Code\" \
+        with ISO 3166-1 and columns representing years."
     )
     parser.add_argument(
         "--pc",
-        type=str, 
-        required=True, 
-        help="Path to the CSV file with GDP per capita data."
+        type=str,
+        required=True,
+        help="Path to the CSV file with GDP per capita data with column \"Country Code\" \
+            with ISO 3166-1 and columns representing years."
         )
     parser.add_argument(
         "--countries",
         type=str,
         nargs='+',
-        required=True, 
+        required=True,
         help="List of countries to compare."
     )
     parser.add_argument(
@@ -87,7 +82,7 @@ def parse_arguments():
         type=str,
         nargs='+',
         choices=KNOWN_GENRES,
-        required=True, 
+        required=True,
         help="List of genres to compare."
         )
     parser.add_argument(
@@ -105,7 +100,7 @@ def parse_arguments():
     )
     parser.add_argument(
         "--end",
-        type=int, 
+        type=int,
         default=2025,
         help="The end year of the range to filter."
         )
@@ -118,7 +113,7 @@ def parse_arguments():
         )
     parser.add_argument(
         "--votetreshold",
-        type=int, 
+        type=int,
         default=100000,
         help="Minimum number of votes required for a movie to be included."
         )
@@ -126,6 +121,9 @@ def parse_arguments():
     return args
 
 def validate_arguments(args):
+    """
+    Function validating arguments.
+    """
     if args.end < args.start:
         raise ValueError('End year has smalller value than start year.')
     if args.votetreshold < 0:
@@ -136,42 +134,18 @@ def main():
     Main function of demontration program.
     """
     # Initialisation
+    print("\nInitialisation")
     args = parse_arguments()
     validate_arguments(args)
     md = IMDbData((args.basics, args.akas, args.ratings), args.prodtype, (args.start, args.end))
 
-    # print(md.title_info_table())
-    # print(md.title_region_table())
-
-    # Weak impact
-    wi = weak_impact(md)
-    print(f'Weak impact: {wi.head(20)}')
-
-    gd = geopolitical_data(args.pop, args.gdp, args.pc)
-    print(gd.head())
-
-    reg_wi, stars = split_star_countries(wi)
-    print(stars)
-
-    impact_vs_data(reg_wi, 'sum_votes', gd, 'pop')
-    impact_vs_data(reg_wi, 'sum_votes', gd, 'gdp')
-    impact_vs_data(reg_wi, 'sum_votes', gd, 'pc')
-
-    # Strong impact
-    si = strong_impact(md, args.qm, **DEFAULT_QM_ARGS[args.qm])
-    print(f'Strong impact: {si.head(20)}')
-
-    reg_si, stars = split_star_countries(si)
-    print(stars)
-
-    impact_vs_data(reg_si, args.qm, gd, 'pop')
-    impact_vs_data(reg_si, args.qm, gd, 'gdp')
-    impact_vs_data(reg_si, args.qm, gd, 'pc')
-
-    # Movies quality
-    qs = create_representation(md, 100, 50000)
+    # Movies quality (Task 1)
+    print("\nTask 1")
+    print(f"Create representation for 100 representants for {args.votetreshold} vote treshold.")
+    qs = create_representation(md, 100,  args.votetreshold)
     print(qs)
 
+    print(f"\nGet top10 countries for chosen representants for {args.votetreshold} vote treshold.")
     top = get_top_countries(md, qs, args.qm, **DEFAULT_QM_ARGS[args.qm])
     print(top)
 
@@ -180,13 +154,41 @@ def main():
         print(f"\nFor {repr_num} best representants we get:")
         print(result)
 
+    # Weak impact (Task 2.1)
+    print("\nTask 2")
+    print("Geopolitical data:")
+    gd = geopolitical_data(args.pop, args.gdp, args.pc)
+    print(gd.head())
 
-    # Additional region-genre analysis
+    wi = weak_impact(md)
+    print(f'\nWeak impact:\n{wi.head(20)}')
+
+    reg_wi, stars = split_star_countries(wi)
+    print(f"\nHistrorical (*) or undefined (**) countries' weak impact:\n{stars}")
+
+    impact_vs_data(reg_wi, 'sum_votes', gd, 'pop')
+    impact_vs_data(reg_wi, 'sum_votes', gd, 'gdp')
+    impact_vs_data(reg_wi, 'sum_votes', gd, 'pc')
+
+    # Strong impact (Task 2.2)
+    si = strong_impact(md, args.qm, **DEFAULT_QM_ARGS[args.qm])
+    print(f'\nStrong impact:\n{si.head(20)}')
+
+    reg_si, stars = split_star_countries(si)
+    print(f"\nHistrorical (*) or undefined (**) countries' strong impact:\n{stars}")
+
+    impact_vs_data(reg_si, args.qm, gd, 'pop')
+    impact_vs_data(reg_si, args.qm, gd, 'gdp')
+    impact_vs_data(reg_si, args.qm, gd, 'pc')
+
+    # Additional region-genre analysis (Task3)
+    print("\nTask 3")
+    print("Additional region-genre analysis:")
     result = region_genre_analysis(md, args.qm, **DEFAULT_QM_ARGS[args.qm])
     print(result)
 
     comparison = make_comparison(result, set(args.countries), set(args.genres))
-    print(comparison)
+    print(f"\nComparison for countries: {args.countries} and genres: {args.genres}:\n{comparison}")
 
 if __name__ == "__main__":
     main()

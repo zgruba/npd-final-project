@@ -18,7 +18,7 @@ def test_str_to_int():
 
 def test_code_to_country():
     # empty
-    # assert _code_to_country('') == '' TODO: add if str empty then "" in the function
+    assert _code_to_country('') == ''
     # invalid code
     assert _code_to_country('ZZ') == ''
     # extension code
